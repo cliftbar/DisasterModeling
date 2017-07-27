@@ -39,4 +39,4 @@ project/boot/
 project/plugins/project/
 .history
 .lib/
-/project/
+/project/target/*

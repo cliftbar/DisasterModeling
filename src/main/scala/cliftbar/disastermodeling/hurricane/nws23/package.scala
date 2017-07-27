@@ -23,8 +23,8 @@ package object model {
     * @param y2
     * @return y
     */
-  def linearInterpolation(x:Double, x1:Double, x2:Double, y1:Double, y2:Double):Double = {
-    return ((y2 - y1) / (x2 - x1)) * (x - x1)
+  def linearInterpolation(x1:Double, y1:Double, x2:Double, y2:Double, x:Double):Double = {
+    return (((y2 - y1) / (x2 - x1)) * (x - x1)) + y1
   }
 
   /**
@@ -54,12 +54,12 @@ package object model {
 
   /**
     * Calculate the coriolis factor for a given latitude
-    * @param lat_deg
-    * @return coriolis factor
+    * @param lat_deg Latitude in degrees
+    * @return coriolis factor in 1/s
     */
   def coriolisFrequency(lat_deg:Double):Double = {
-    val w = 2.0 * math.Pi / 24
-    return 2.0 * w * math.sin(math.toRadians(lat_deg))
+    val w:Double = 2.0 * math.Pi / (24 * 3600) // rad/s
+    return 2.0 * w * math.sin(math.toRadians(lat_deg)) // 1/s
   }
 
   /**
@@ -114,7 +114,7 @@ package object model {
       val phiIntermediate = (x3 * math.pow((rNmiUse - rPhiMax), 3)) + (x2 * math.pow((rNmiUse - rPhiMax), 2)) + (x1 * (rNmiUse - rPhiMax)) + c
 
       val phiTemp = if (130 < r_nmi && r_nmi < 360) { // justification on NWS23 pdf page 287 page 263
-        val deltaPhi = linearInterpolation(r_nmi, 130, 360, phiIntermediate, (phiIntermediate - 2))
+        val deltaPhi = linearInterpolation(130, phiIntermediate, 360, (phiIntermediate - 2), r_nmi)
         phiIntermediate + deltaPhi
       } else if (360 <= r_nmi) {
         phiIntermediate - 2
