@@ -82,7 +82,7 @@ package object model {
     */
   def gradientWindAtRadius(pw_InHg:Double , cp_InHg:Double , r_nmi:Double , lat_deg:Double ):Double = {
     val k = kDensityCoefficient(lat_deg)
-    val f = coriolisFrequency(lat_deg)
+    val f = coriolisFrequency(lat_deg) * 3600 // Convert from 1/s to 1/hr
 
     return (k * math.sqrt((pw_InHg - cp_InHg))) - ((r_nmi * f) / 2)
   }
