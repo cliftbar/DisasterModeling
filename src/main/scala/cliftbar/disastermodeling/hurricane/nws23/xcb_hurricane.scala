@@ -6,6 +6,7 @@ import java.awt.Color
 import java.awt.image._
 import java.io._
 import javax.imageio.ImageIO
+import scala.collection.mutable._
 
 import scala.collection.parallel._
 import scala.concurrent.forkjoin._
@@ -95,8 +96,7 @@ class LatLonGrid(topLatY:Double, botLatY:Double, leftLonX:Double, rightLonX:Doub
 /**
   * Created by cameron.barclift on 5/12/2017.
   */
-class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val rMax_nmi:Double) {
-
+class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val rMax_nmi:Double, var CalcedResults:List[Tuple3[Double,Double,Int]] = List.empty) {
   def AddTrackPoint(tp:TrackPoint):HurricaneEvent = {
     return new HurricaneEvent(this.grid, this.trackPoints ::: List(tp), this.rMax_nmi)
   }
@@ -128,7 +128,7 @@ class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val
 
     val parallel = if (levelParallelism == -1) false else true
 
-    val CalcedResults = if (parallel) {
+    CalcedResults = if (parallel) {
       val latLonPar =latLonList.toParArray
       latLonPar.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(levelParallelism))
       latLonPar.map(x => TrackMap(x._1, x._2, maxDist)).toList
@@ -176,5 +176,51 @@ class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val
     val raster = image.getRaster
     raster.setDataElements(0, 0, width, height, pixels.toArray)
     ImageIO.write(image, "PNG", new File(fileUri))
+  }
+
+  def ConvertGridToContours(gridList: List[(Double, Double, Int)], width: Int, height: Int, contourValue: Int):Unit = {
+    println("hello")
+    val gridList_twoD_width = gridList.sortBy(x => x._1).grouped(width).toList
+    val gridList_twoD_height = gridList.sortBy(x => x._2).grouped(height).toList
+    println(gridList_twoD_width(0))
+    println("Output")
+    println("x,y,z")
+    for (line <- gridList_twoD_width){
+      line.map(x => println("%s,%s,%s".format(x._1, x._2, x._3)))
+    }
+
+    println("Contour")
+    val contourWidth = gridList_twoD_width.flatMap(line => FindContourInList(line, contourValue))
+    val contourHeight = gridList_twoD_height.flatMap(line => FindContourInList(line, contourValue))
+
+    println("x,y,z")
+    (contourWidth ++ contourHeight).map(x => println("%s,%s,%s".format(x._1, x._2, x._3)))
+  }
+
+  def FindContourInList(line: List[(Double, Double, Int)], contourValue: Int): List[(Double, Double, Int)] = {
+    var contourPoints:Set[(Double, Double, Int)] = Set.empty
+
+    // main loop
+    for (i <- 0 until (line.length - 1)){
+      val slope = line(i + 1)._3 - line(i)._3
+
+      if (slope > 0) {
+        if (line(i + 1)._3 >= contourValue && line(i)._3 < contourValue) {
+          contourPoints.add(line(i + 1))
+        }
+      } else if (slope < 0) {
+        if (line(i)._3 >= contourValue && line(i + 1)._3 < contourValue) {
+          contourPoints.add(line(i))
+        }
+      }
+    }
+    if (line.last._3 >= contourValue) {
+      contourPoints.add(line.last)
+    }
+
+    if (line.head._3 >= contourValue) {
+      contourPoints.add(line.head)
+    }
+    return contourPoints.toList.sortBy(x => x._2)
   }
 }

@@ -84,7 +84,7 @@ package object model {
     val k = kDensityCoefficient(lat_deg)
     val f = coriolisFrequency(lat_deg)
 
-    return (k * math.pow((pw_InHg - cp_InHg), 0.5)) - ((r_nmi * f) / 2)
+    return (k * math.sqrt((pw_InHg - cp_InHg))) - ((r_nmi * f) / 2)
   }
 
   /**
