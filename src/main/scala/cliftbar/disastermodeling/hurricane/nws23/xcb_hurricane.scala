@@ -10,6 +10,7 @@ import scala.collection.mutable._
 
 import scala.collection.parallel._
 import scala.concurrent.forkjoin._
+import java.util.concurrent.atomic.AtomicLong
 
 package object HurricaneUtilities {
 
@@ -97,6 +98,8 @@ class LatLonGrid(topLatY:Double, botLatY:Double, leftLonX:Double, rightLonX:Doub
   * Created by cameron.barclift on 5/12/2017.
   */
 class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val rMax_nmi:Double, var CalcedResults:List[Tuple3[Double,Double,Int]] = List.empty) {
+  var calcPos: AtomicLong = new AtomicLong()
+  var calcLen: Long = 0
   def AddTrackPoint(tp:TrackPoint):HurricaneEvent = {
     return new HurricaneEvent(this.grid, this.trackPoints ::: List(tp), this.rMax_nmi)
   }
@@ -129,7 +132,8 @@ class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val
     val parallel = if (levelParallelism == -1) false else true
 
     CalcedResults = if (parallel) {
-      val latLonPar =latLonList.toParArray
+      val latLonPar = latLonList.toParArray
+      calcLen = latLonList.length
       latLonPar.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(levelParallelism))
       latLonPar.map(x => TrackMap(x._1, x._2, maxDist)).toList
     } else {
@@ -153,7 +157,10 @@ class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val
   }
 
   def TrackMap(pointLatY:Double, pointLonX:Double, maxDist:Int):(Double, Double, Int) = {
-    return this.trackPoints.toArray.map(tp => PointMap(tp, pointLatY, pointLonX, maxDist)).maxBy(x => x._3)
+    val ret = this.trackPoints.toArray.map(tp => PointMap(tp, pointLatY, pointLonX, maxDist)).maxBy(x => x._3)
+    val pct = (calcPos.incrementAndGet()/calcLen.toDouble) * 100.0
+    println(s"progress: $pct")
+    return ret
   }
 
   def PointMap(tp:TrackPoint, pointLatY:Double, pointLonX:Double, maxDist:Int):(Double, Double, Int) = {

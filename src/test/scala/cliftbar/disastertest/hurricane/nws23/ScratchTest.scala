@@ -39,9 +39,9 @@ class ScratchTest extends FunSuite {
     val event = new HurricaneEvent(grid, tpList, rMax)
 
     event.DoCalcs(360, 2)
-    println(event.CalcedResults(0)._1)
+    //println(event.CalcedResults(0)._1)
 
-    event.ConvertGridToContours(event.CalcedResults, grid.GetWidthInBlocks, grid.GetHeightInBlocks, 30)
+    //event.ConvertGridToContours(event.CalcedResults, grid.GetWidthInBlocks, grid.GetHeightInBlocks, 30)
   }
 
 }
