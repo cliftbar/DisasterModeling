@@ -6,11 +6,13 @@ import java.awt.Color
 import java.awt.image._
 import java.io._
 import javax.imageio.ImageIO
-import scala.collection.mutable._
 
+import scala.collection.mutable._
 import scala.collection.parallel._
 import scala.concurrent.forkjoin._
 import java.util.concurrent.atomic.AtomicLong
+
+import cliftbar.disastermodeling.hurricane.TrackPoint
 
 package object HurricaneUtilities {
 
@@ -99,7 +101,7 @@ class LatLonGrid(topLatY:Double, botLatY:Double, leftLonX:Double, rightLonX:Doub
   */
 class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val rMax_nmi:Double, var CalcedResults:List[Tuple3[Double,Double,Int]] = List.empty) {
   var calcPos: AtomicLong = new AtomicLong()
-  var calcLen: Long = 0
+
   def AddTrackPoint(tp:TrackPoint):HurricaneEvent = {
     return new HurricaneEvent(this.grid, this.trackPoints ::: List(tp), this.rMax_nmi)
   }
@@ -126,18 +128,22 @@ class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val
     }
   }
 
-  def DoCalcs(maxDist:Int, levelParallelism:Int, imageFileUri: String = "", textFileUri: String = ""):Unit = {
+  def DoCalcs(maxDist:Int, levelParallelism:Int, imageFileUri: String = "", textFileUri: String = "", printDebug:Boolean = false):Unit = {
     val latLonList = this.grid.GetLatLonList
 
     val parallel = if (levelParallelism == -1) false else true
 
+    val totalCalcLen = latLonList.length
+
     CalcedResults = if (parallel) {
       val latLonPar = latLonList.toParArray
-      calcLen = latLonList.length
       latLonPar.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(levelParallelism))
-      latLonPar.map(x => TrackMap(x._1, x._2, maxDist)).toList
+      latLonPar.map(x => TrackMap(x._1, x._2, maxDist, totalCalcLen, printDebug)).toList
     } else {
-      latLonList.map(x => TrackMap(x._1, x._2, maxDist))
+      latLonList.map(x => TrackMap(x._1, x._2, maxDist, totalCalcLen, printDebug))
+    }
+    if (printDebug){
+      println()
     }
 
     if (imageFileUri != "") {
@@ -156,10 +162,12 @@ class HurricaneEvent (val grid:LatLonGrid, val trackPoints:List[TrackPoint], val
     }
   }
 
-  def TrackMap(pointLatY:Double, pointLonX:Double, maxDist:Int):(Double, Double, Int) = {
+  def TrackMap(pointLatY:Double, pointLonX:Double, maxDist:Int, totalCalcLen:Long, printProgress:Boolean = false):(Double, Double, Int) = {
     val ret = this.trackPoints.toArray.map(tp => PointMap(tp, pointLatY, pointLonX, maxDist)).maxBy(x => x._3)
-    val pct = (calcPos.incrementAndGet()/calcLen.toDouble) * 100.0
-    println(s"progress: $pct")
+    if (printProgress) {
+      val pct = (calcPos.incrementAndGet() / totalCalcLen.toDouble) * 100.0
+      println(s"progress: $pct")
+    }
     return ret
   }
 

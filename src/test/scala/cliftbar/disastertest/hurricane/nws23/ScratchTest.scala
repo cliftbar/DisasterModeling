@@ -2,7 +2,8 @@ package cliftbar.disastertest.hurricane.nws23
 
 import java.time.LocalDateTime
 
-import cliftbar.disastermodeling.hurricane.nws23.{HurricaneEvent, LatLonGrid, TrackPoint}
+import cliftbar.disastermodeling.hurricane.TrackPoint
+import cliftbar.disastermodeling.hurricane.nws23.{HurricaneEvent, LatLonGrid}
 import org.scalatest.FunSuite
 
 class ScratchTest extends FunSuite {
@@ -31,14 +32,14 @@ class ScratchTest extends FunSuite {
       ,20.2
       ,-99.6
       ,-95.6
-      ,10
-      ,10
+      ,100
+      ,100
     )
 
     val rMax = 15
     val event = new HurricaneEvent(grid, tpList, rMax)
 
-    event.DoCalcs(360, 2)
+    event.DoCalcs(360, 2, printDebug = true)
     //println(event.CalcedResults(0)._1)
 
     //event.ConvertGridToContours(event.CalcedResults, grid.GetWidthInBlocks, grid.GetHeightInBlocks, 30)
