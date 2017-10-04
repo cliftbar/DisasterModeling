@@ -51,6 +51,10 @@ package object model {
     return math.max(0.0696 + (0.0049 * vMax_mps) - (0.0064 * lat_deg), 0)
   }
 
+  def parameterXi(r_km:Double, rOne:Double, rTwo:Double):Double = {
+    val xi = (r_km - rOne) / (rTwo - rOne)
+  }
+
   def weightingFunction(xi:Double):Double = {
     return (70 * math.pow(xi, 9)) - (315 * math.pow(xi, 8)) + (540 * math.pow(xi, 7)) - (420 * math.pow(xi, 6)) + (126 * math.pow(xi, 5))
   }
@@ -60,16 +64,17 @@ package object model {
   }
 
   @tailrec
-  def recursizeNewtonRaphsonSearch(xi:Double, iteration:Int, params:Map[String, Double]):Double = {
+  def recursiveNewtonRaphsonSearch(xi:Double, iteration:Int, params:Map[String, Double]):Double = {
     val wFunc = weightingFunction(xi) - params("rightTerm")
     val wFuncDeriv = weightingFunctionDerivative(xi)
     val xiNew = xi - (wFunc / wFuncDeriv)
     if (math.abs(xiNew - xi) < params("errorThreshold")) {
       xi
     } else if (iteration > params("maxIterations")) {
-      Double.NaN
+      println("Iteration Limit Reached")
+      xi
     } else {
-      recursizeNewtonRaphsonSearch(xiNew, iteration + 1, params)
+      recursiveNewtonRaphsonSearch(xiNew, iteration + 1, params)
     }
   }
 
@@ -93,21 +98,41 @@ package object model {
   def transitionZoneCalc(n:Double, xOne:Double, xTwo:Double, A:Double, rMax:Double, initial_xi:Double = 0.5, errorThreshold:Double = 0.00001, maxIterations:Int = 1000, transitionWidth:Double = 25):(Double, Double) = {
     val rightTerm = rightTerm(n, xOne, xTwo, A, rMax)
     val params = Map("rightTerm" -> 0, "errorThreshold" -> errorThreshold, "maxIterations" -> maxIterations)
-    val convergedXi = recursizeNewtonRaphsonSearch(initial_xi, 0, params)
+    val convergedXi = recursiveNewtonRaphsonSearch(initial_xi, 0, params)
 
     val R = xiToRadii(convergedXi, rMax, transitionWidth)
 
     return R
   }
 
+  def parameterVi(vMax_mps:Double, r_km:Double, rMax_km:Double, n:Double):Double = {
+    math.pow((vMax_mps * (r_km / rMax_km)), n)
+  }
+
+  def parameterVo(vMax_mps:Double, r_km:Double, rMax_km:Double, xOne:Double, xTwo:Double, A:Double):Double = {
+    vMax_mps * (((1 - A) * math.exp(-1.0 * (r_km * rMax_km) / xOne)) + A * math.exp(-1 * (r_km - rMax_km) / xTwo))
+  }
+
   def calcGradientWindSpeed(vMax_mps:Double, r_km:Double, lat_deg:Double, xTwo:Double = 25, rMax_km:Double = Double.NaN):Double = {
     val n = parameterN(vMax_mps, lat_deg)
     val A = parameterA(vMax_mps, lat_deg)
     val xOne = parameterXone(vMax_mps, lat_deg)
-    //val localRMax =
     val R = transitionZoneCalc(n, xOne, xTwo, A, rMax_km)
 
-    val vGrad = if (r_km < )
+    val vGrad = if (r_km < R._1) {
+      parameterVi(vMax_mps, r_km, rMax_km, n)
+    } else if (r_km < R._2) {
+      val xi = parameterXi(r_km, R._1, R._2)
+      val w = weightingFunction(xi)
+      val vi = parameterVi(vMax_mps, r_km, rMax_km, n)
+      val vo = parameterVo(vMax_mps, r_km, rMax_km, xOne, xTwo, A)
+
+      (vi * (1 - w)) + (vo * w)
+    } else {
+      parameterVo(vMax_mps, r_km, rMax_km, xOne, xTwo, A)
+    }
+
+    return vGrad
   }
 
 
