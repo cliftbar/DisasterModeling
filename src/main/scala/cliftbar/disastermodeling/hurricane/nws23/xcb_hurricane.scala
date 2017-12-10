@@ -85,8 +85,8 @@ class LatLonGrid(topLatY:Double, botLatY:Double, leftLonX:Double, rightLonX:Doub
   def GetBlockLatY(blockY:Int):Double = {return this.botLatY + (blockY / this.BlockPerDegreeY.toDouble)}
   def GetBlockLonX(blockX:Int):Double = {this.leftLonX + (blockX / this.BlockPerDegreeX.toDouble)}
 
-  def GetWidthInBlocks:Int = {(this.GetWidth * this.BlockPerDegreeX).toInt}
-  def GetHeightInBlocks:Int = {(this.GetHeight * this.BlockPerDegreeY).toInt}
+  def GetWidthInBlocks:Int = {(this.GetWidth * this.BlockPerDegreeX).round.toInt}
+  def GetHeightInBlocks:Int = {(this.GetHeight * this.BlockPerDegreeY).round.toInt}
 
   def GetLatLonList:List[(Double,Double)] = {
     val height = this.GetHeightInBlocks
